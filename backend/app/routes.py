@@ -3,6 +3,7 @@ from __future__ import annotations
 import random
 from collections import defaultdict
 from datetime import date, timedelta
+from functools import lru_cache
 from typing import Literal
 
 from fastapi import APIRouter, Query
@@ -68,19 +69,19 @@ def _year_for_month(month: int, today: date) -> int:
     return today.year - 1
 
 
-def _build_movement(month: int, income_probability: float, today: date) -> FinancialMovement:
-    operation_type: OperationType = "income" if random.random(
+def _build_movement(month: int, income_probability: float, today: date, rng: random.Random) -> FinancialMovement:
+    operation_type: OperationType = "income" if rng.random(
     ) < income_probability else "outcome"
-    movement_day = random.randint(1, 28)
+    movement_day = rng.randint(1, 28)
     movement_date = date(_year_for_month(month, today), month, movement_day)
-    business_type: BusinessType = "B2B" if random.random() < 0.55 else "B2C"
+    business_type: BusinessType = "B2B" if rng.random() < 0.55 else "B2C"
 
     if operation_type == "income":
-        category: Category = "sales" if random.random() < 0.9 else "others"
-        amount = round(random.uniform(800, 12000), 2)
+        category: Category = "sales" if rng.random() < 0.9 else "others"
+        amount = round(rng.uniform(800, 12000), 2)
     else:
-        category = random.choice(OUTCOME_CATEGORIES)
-        amount = round(random.uniform(500, 9000), 2)
+        category = rng.choice(OUTCOME_CATEGORIES)
+        amount = round(rng.uniform(500, 9000), 2)
 
     return FinancialMovement(
         create_date=movement_date,
@@ -92,16 +93,26 @@ def _build_movement(month: int, income_probability: float, today: date) -> Finan
 
 
 def generate_mock_movements(seed: int | None = None) -> list[FinancialMovement]:
-    if seed is not None:
-        random.seed(seed)
+    rng = random.Random(seed) if seed is not None else random.Random()
     today = date.today()
     movements: list[FinancialMovement] = []
     for month in range(1, 13):
-        income_probability = random.uniform(0.45, 0.7)
+        income_probability = rng.uniform(0.45, 0.7)
         for _ in range(30):
-            movements.append(_build_movement(month, income_probability, today))
+            movements.append(_build_movement(month, income_probability, today, rng))
     movements.sort(key=lambda item: item.create_date)
     return movements
+
+
+@lru_cache(maxsize=1)
+def _cached_movements(seed: int = 42) -> tuple[FinancialMovement, ...]:
+    """Genera y cachea los movimientos mock. Devuelve tupla inmutable."""
+    return tuple(generate_mock_movements(seed=seed))
+
+
+def get_movements(seed: int = 42) -> list[FinancialMovement]:
+    """Retorna movimientos mock desde caché. Preferir siempre esta sobre generate_mock_movements()."""
+    return list(_cached_movements(seed=seed))
 
 
 def filter_movements_by_date(
@@ -252,7 +263,7 @@ def get_metrics(
     category: Category | None = Query(default=None),
     operation_type: OperationType | None = Query(default=None),
 ) -> list[FinancialMovement]:
-    movements = generate_mock_movements(seed=42)
+    movements = get_movements()
     filtered = filter_movements(
         movements, start_date, end_date, category, operation_type
     )
@@ -261,7 +272,7 @@ def get_metrics(
 
 @router.get("/api/metrics/facets", response_model=MetricsFacets)
 def get_metrics_facets() -> MetricsFacets:
-    movements = generate_mock_movements(seed=42)
+    movements = get_movements()
     return build_metrics_facets(movements)
 
 
@@ -274,7 +285,7 @@ def get_metrics_summary(
     operation_type: OperationType | None = Query(default=None),
     business_type: BusinessType | None = Query(default=None),
 ) -> list[MetricsSummaryItem]:
-    movements = generate_mock_movements(seed=42)
+    movements = get_movements()
     if business_type is not None:
         movements = [
             item for item in movements if item.business_type == business_type]
@@ -292,7 +303,7 @@ def get_top_categories(
     end_date: date | None = Query(default=None),
     business_type: BusinessType | None = Query(default=None),
 ) -> list[TopCategoryItem]:
-    movements = generate_mock_movements(seed=42)
+    movements = get_movements()
     if business_type is not None:
         movements = [
             item for item in movements if item.business_type == business_type]
@@ -308,7 +319,7 @@ def get_metrics_comparison(
     end_date: date = Query(...),
     business_type: BusinessType | None = Query(default=None),
 ) -> MetricsComparison:
-    movements = generate_mock_movements(seed=42)
+    movements = get_movements()
     if business_type is not None:
         movements = [
             item for item in movements if item.business_type == business_type]
@@ -347,7 +358,7 @@ def get_metrics_alerts(
     end_date: date | None = Query(default=None),
     business_type: BusinessType | None = Query(default=None),
 ) -> list[MetricsAlert]:
-    movements = generate_mock_movements(seed=42)
+    movements = get_movements()
     if business_type is not None:
         movements = [
             item for item in movements if item.business_type == business_type]
@@ -359,32 +370,30 @@ def get_metrics_alerts(
     return detect_outcome_alerts(summary, threshold)
 
 
-@router.get("/api/metrics/b2b", response_model=list[FinancialMovement])
+@router.get("/api/metrics/b2b", response_model=list[FinancialMovement], deprecated=True)
 def get_b2b_metrics(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     category: Category | None = Query(default=None),
     operation_type: OperationType | None = Query(default=None),
 ) -> list[FinancialMovement]:
-    movements = [
-        movement for movement in generate_mock_movements(seed=42) if movement.business_type == "B2B"
-    ]
+    movements = get_movements()
+    movements = [m for m in movements if m.business_type == "B2B"]
     filtered = filter_movements(
         movements, start_date, end_date, category, operation_type
     )
     return ensure_chronological_order(filtered)
 
 
-@router.get("/api/metrics/b2c", response_model=list[FinancialMovement])
+@router.get("/api/metrics/b2c", response_model=list[FinancialMovement], deprecated=True)
 def get_b2c_metrics(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     category: Category | None = Query(default=None),
     operation_type: OperationType | None = Query(default=None),
 ) -> list[FinancialMovement]:
-    movements = [
-        movement for movement in generate_mock_movements(seed=42) if movement.business_type == "B2C"
-    ]
+    movements = get_movements()
+    movements = [m for m in movements if m.business_type == "B2C"]
     filtered = filter_movements(
         movements, start_date, end_date, category, operation_type
     )

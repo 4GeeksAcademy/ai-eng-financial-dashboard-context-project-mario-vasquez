@@ -20,17 +20,31 @@ async function fetchFinancialData(): Promise<FinancialMovement[]> {
   return response.json();
 }
 
+function computePeriodLabel(movements: FinancialMovement[]): string {
+  const dates = movements.map((m) => new Date(m.create_date));
+  const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
+  const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+  const minYear = minDate.getFullYear();
+  const maxYear = maxDate.getFullYear();
+  if (minYear === maxYear) {
+    return `${minYear} - Full Year`;
+  }
+  return `${minYear} - ${maxYear}`;
+}
+
 function App() {
   const [metrics, setMetrics] = useState<KPIMetrics | null>(null);
   const [monthlyData, setMonthlyData] = useState<MonthlyDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<string>("Loading…");
 
   useEffect(() => {
     fetchFinancialData()
       .then((movements) => {
         setMetrics(computeKPIs(movements));
         setMonthlyData(computeMonthlyData(movements));
+        setPeriod(computePeriodLabel(movements));
       })
       .catch(() => {
         setError(
@@ -46,7 +60,7 @@ function App() {
     <main className="dark min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-8">
-          <DashboardHeader period="2024 - Full Year" />
+          <DashboardHeader period={period} />
 
           {error ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive-foreground">
