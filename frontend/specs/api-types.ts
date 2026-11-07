@@ -2,8 +2,13 @@
 // api-types.ts — Interfaces TypeScript para respuestas de la API
 //
 // Fuente: backend/app/routes.py (modelos Pydantic)
-// Verificado contra: respuestas reales de cada endpoint (2026-11-07)
 // Verificado contra: OpenAPI /docs (esquemas y tipos propiedad por propiedad)
+//   - MetricsFacets        → FacetsResponse    ✅
+//   - MetricsAlert         → AlertEntry        ✅
+//   - TopCategoryItem      → CategoryEntry     ✅
+//   - MetricsComparison    → MetricsComparison ✅
+// Verificado contra: respuestas reales de cada endpoint (curl, 2026-11-07)
+//   Ver TRACEABILITY.md para trazabilidad campo por campo
 //
 // Funcionalidades cubiertas:
 //   1. Facets — rango de fechas y vista B2B vs B2C

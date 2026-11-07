@@ -2,7 +2,11 @@
 
 Este directorio contiene todos los archivos de especificación del frontend.
 Cada archivo cubre tipos TypeScript, componentes, utilidades, estados UX,
-y la API del backend que se consume — todo verificado contra OpenAPI `/docs`.
+y la API del backend que se consume — todo verificado contra OpenAPI `/docs`
+y contra respuestas reales de cada endpoint (curl).
+
+> 🔍 Ver [`TRACEABILITY.md`](./TRACEABILITY.md) para la trazabilidad campo por campo
+> de cada tipo TypeScript a su schema OpenAPI y respuesta real.
 
 ---
 
@@ -265,6 +269,7 @@ interface B2BvsB2CViewProps {
 | `utils-spec.md` | Funciones utilitarias (`computeKPIs`, `computeMonthlyData`, formateo) |
 | `ux-states-spec.md` | Estados de experiencia de usuario (loading, error, empty, data) |
 | `ux-behavior-spec.md` | Comportamientos e interacciones del dashboard — fetch flow, dark mode, responsive |
+| `TRACEABILITY.md` | **Evidencia**: cada campo TypeScript mapeado a su schema OpenAPI y verificado contra respuesta real curl |
 
 ## Convenciones
 

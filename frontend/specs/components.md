@@ -2,6 +2,8 @@
 
 > **Fuente**: `backend/app/routes.py` (endpoints), `frontend/specs/api-types.ts` (interfaces de respuesta), `frontend/specs/param-types.ts` (parámetros query), `frontend/src/App.tsx` (patrón de fetch existente)
 >
+> **Verificación**: Todos los nombres de campo en este spec fueron trazados al OpenAPI real (`/docs`) y verificados contra respuestas curl. Ver `TRACEABILITY.md` para la trazabilidad campo por campo.
+>
 > Los tres grupos de componentes descritos aquí son **nuevos** — no existen en el frontend actual. El código existente (KPIRow, IncomeOutcomeChart, ProfitPercentChart) no se modifica.
 
 ---

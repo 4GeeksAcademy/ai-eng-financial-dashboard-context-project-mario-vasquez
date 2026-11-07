@@ -2,8 +2,12 @@
 // param-types.ts — Tipos de parámetros query para la API
 //
 // Fuente: backend/app/routes.py (parámetros de cada endpoint)
-// Verificado contra: respuestas reales de cada endpoint (2026-11-07)
 // Verificado contra: OpenAPI /docs (parámetros query propiedad por propiedad)
+//   - GET /api/metrics/alerts       → AlertsParams         ✅
+//   - GET /api/metrics/categories   → TopCategoriesParams  ✅
+//   - GET /api/metrics/comparison   → DateRangeFilter      ✅
+// Verificado contra: respuestas reales de cada endpoint (curl, 2026-11-07)
+//   Ver TRACEABILITY.md para trazabilidad campo por campo
 //
 // Funcionalidades cubiertas:
 //   1. DateRangeFilter — filtro de fechas compartido
