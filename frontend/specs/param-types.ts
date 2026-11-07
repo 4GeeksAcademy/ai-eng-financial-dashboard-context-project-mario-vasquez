@@ -19,7 +19,6 @@
 import type {
   BusinessType,
   OperationType,
-  Category,
 } from "../src/lib/financial-types";
 
 // ============================================================
