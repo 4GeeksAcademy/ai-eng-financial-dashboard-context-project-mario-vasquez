@@ -107,10 +107,10 @@ interface AlertsParams extends DateRangeFilter {
 ```ts
 // frontend/specs/api-types.ts — AlertEntry y AlertsResponse
 interface AlertEntry {
-  period: string;         // ISO según group_by: "2025-01" (month), "2025-W03" (week), "2025-01-15" (day)
-  outcome: number;        // Total de egresos en el período, ej. 103378.98
-  previous_avg: number;   // Promedio de egresos de períodos anteriores, ej. 41404.44
-  increment: number;      // Razón (outcome - previous_avg) / previous_avg, ej. 1.4968
+  period: string;              // ISO según group_by: "2025-01" (month), "2025-W03" (week), "2025-01-15" (day)
+  outcome_total: number;       // Total de egresos en el período, ej. 103378.98
+  baseline_average: number;    // Promedio de egresos de períodos anteriores, ej. 41404.44
+  increase_ratio: number;      // (outcome_total - baseline_average) / baseline_average, ej. 1.4968
 }
 
 type AlertsResponse = AlertEntry[];  // El endpoint devuelve el array directamente
@@ -204,11 +204,10 @@ interface ComparisonParams extends DateRangeFilter {
 ```ts
 // Schema backend: MetricsComparison
 interface MetricsComparison {
-  current_net: number;       // Neto del período actual (income - outcome), ej. 45965.92
-  previous_net: number;      // Neto del período anterior de igual duración, ej. -1041.78
-  delta: number;             // Diferencia: current_net - previous_net, ej. 47007.70
-  delta_percent: number;     // Variación porcentual, ej. 100.0
-  // delta_percent es null si previous_net === 0
+  current_period: number;       // Neto del período actual (income - outcome), ej. 45965.92
+  previous_period: number;      // Neto del período anterior de igual duración, ej. -1041.78
+  delta_abs: number;            // Diferencia absoluta: current_period - previous_period, ej. 47007.70
+  delta_pct: number | null;     // Variación porcentual, ej. 590.48. null si previous_period === 0.
 }
 ```
 
@@ -245,9 +244,9 @@ interface B2BvsB2CViewProps {
 |---|---|---|---|
 | **1** | **Un segmento sin datos (ej. B2B no tiene egresos en el período)** | `GET /api/metrics/categories/top?business_type=B2B&operation_type=outcome` devuelve `[]`. El otro segmento tiene datos normales. | Panel B2B: ícono `Inbox` + `"📭 Sin datos para B2B en el período seleccionado."` Métricas de comparación: `"—"`. Panel B2C: tabla normal con top-5. Gráfico: solo 2 barras (B2C actual + B2C anterior). |
 | **2** | **Ambos segmentos vacíos** | Ambos endpoints de categories/top devuelven `[]`, y ambos comparison devuelven `null` (o error). | Paneles izquierdo y derecho: `"📭 Sin datos para B2B en el período seleccionado."` / `"📭 Sin datos para B2C en el período seleccionado."` Gráfico: `"Sin datos para la comparativa."` Toda la sección se mantiene visible, no se oculta. |
-| **3** | **previous_net = 0** (en comparison) | El backend no puede calcular `delta_percent`: `delta_abs / |previous_net|` es división por cero. Backend retorna `delta_percent: null`. | La UI debe mostrar `"—"` o `"N/A"` en lugar del porcentaje. `delta` (absoluto) sí se muestra normal. |
+| **3** | **previous_period = 0** (en comparison) | El backend no puede calcular `delta_pct`: `delta_abs / |previous_period|` es división por cero. Backend retorna `delta_pct: null`. | La UI debe mostrar `"—"` o `"N/A"` en lugar del porcentaje. `delta_abs` (absoluto) sí se muestra normal. |
 | **4** | **Error parcial (3 de 4 llamadas fallan)** | Ej.: categories/top B2B falla (timeout), pero categories/top B2C, comparison B2B y comparison B2C funcionan. | El panel B2B muestra `"⚠️ Error al cargar B2B: ..."`. Panel B2C y gráfico se renderizan con datos disponibles. El error es por segmento, no global. |
-| **5** | **Fechas sin movimientos en el período** | El backend retorna `[]` para categories/top y `current_net = 0`, `previous_net = 0`, `delta = 0`, `delta_percent = 0` para comparison. | Ambos paneles: `"📭 Sin datos para {B2B|B2C} en el período seleccionado."` Gráfico: barras en 0 con tooltip indicando `"Sin actividad"`. |
+| **5** | **Fechas sin movimientos en el período** | El backend retorna `[]` para categories/top y `current_period = 0`, `previous_period = 0`, `delta_abs = 0`, `delta_pct = 0` para comparison. | Ambos paneles: `"📭 Sin datos para {B2B|B2C} en el período seleccionado."` Gráfico: barras en 0 con tooltip indicando `"Sin actividad"`. |
 
 ---
 

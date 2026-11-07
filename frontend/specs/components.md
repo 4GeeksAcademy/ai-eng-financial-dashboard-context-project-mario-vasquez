@@ -115,7 +115,7 @@ Mostrar una tabla con los períodos donde el outcome excede un umbral respecto a
 
 2. **Threshold**: PM no especifica valor por defecto. **Decisión**: default `1.5` (constante usada en el seed data del backend). El callback `onThresholdChange` recibe `number` (se parsea de `event.target.value` en el handler interno).
 
-3. **Nombres de campos `AlertEntry` corregidos**: el borrador original usaba `outcome_total`, `baseline_average`, `increase_ratio`. La API real (y `api-types.ts`) usa **`outcome`**, **`previous_avg`**, **`increment`**.
+3. **Nombres de campos `AlertEntry`**: la API real devuelve `outcome_total`, `baseline_average`, `increase_ratio` (verificado contra OpenAPI). El spec de componentes usa estos nombres directamente de `api-types.ts`.
 
 ### Props
 
@@ -127,7 +127,7 @@ interface AlertsTableProps {
    * Lista de alertas devueltas por GET /api/metrics/alerts.
    * Vacío ([]) = "Sin alertas" — no es error.
    * Cada entrada sigue AlertEntry de api-types.ts:
-   *   { period: string; outcome: number; previous_avg: number; increment: number }
+   *   { period: string; outcome_total: number; baseline_average: number; increase_ratio: number }
    */
   data: AlertEntry[];
 
@@ -182,9 +182,9 @@ interface AlertsTableProps {
 | # | Columna | Tipo | Fuente (api-types.ts) | Formateo |
 |---|---|---|---|---|
 | 1 | **Período** | `string` | `AlertEntry.period` | ISO según group_by: "2025-01-15" (day), "2025-W03" (week), "2025-01" (month) |
-| 2 | **Outcome** | `number` | `AlertEntry.outcome` | `formatCurrency()` → `"$103,378.98"` |
-| 3 | **Promedio previo** | `number` | `AlertEntry.previous_avg` | `formatCurrency()` → `"$41,404.44"` |
-| 4 | **Incremento** | `number` | `AlertEntry.increment` | `formatPercent()` → `"+149.68%"` (rojo si >0) |
+| 2 | **Outcome** | `number` | `AlertEntry.outcome_total` | `formatCurrency()` → `"$103,378.98"` |
+| 3 | **Promedio previo** | `number` | `AlertEntry.baseline_average` | `formatCurrency()` → `"$41,404.44"` |
+| 4 | **Incremento** | `number` | `AlertEntry.increase_ratio` | `formatPercent()` → `"+149.68%"` (rojo si >0) |
 
 ### Fetch asociado
 
@@ -271,9 +271,9 @@ Comparar el rendimiento financiero de los segmentos de negocio B2B y B2C lado a 
 
 2. **El gráfico comparativo requiere DOS llamadas a `comparison`** (una por `business_type`), porque `GET /api/metrics/comparison` solo acepta un `business_type` a la vez.
 
-3. **Nombres de campos `CategoryEntry` corregidos**: el borrador original usaba `total_amount`, `operation_type`. La API real (y `api-types.ts`) usa **`total`** y no incluye `operation_type` en la respuesta.
+3. **Nombres de campos `CategoryEntry`**: la API real devuelve `total_amount` y `operation_type` (verificado contra OpenAPI). Idéntico a `api-types.ts`. No se renombra nada.
 
-4. **Nombres de campos `MetricsComparison` corregidos**: el borrador original usaba `current_period`, `previous_period`, `delta_abs`, `delta_pct`. La API real devuelve **`current_net`**, **`previous_net`**, **`delta`**, **`delta_percent`**.
+4. **Nombres de campos `MetricsComparison`**: la API real devuelve `current_period`, `previous_period`, `delta_abs`, `delta_pct` (este último nullable: `number | null`). Idéntico a la respuesta de `GET /api/metrics/comparison`. No se renombra nada.
 
 5. **`operation_type` en top categorías**: El PM no especifica income vs outcome. **Decisión**: por defecto `"outcome"` (egresos), que es el default del backend. Se expone como prop para flexibilidad.
 
@@ -287,7 +287,7 @@ interface B2BvsB2CViewProps {
    * Top categorías del segmento B2B (operation_type = "outcome" por defecto).
    * Array vacío si no hay datos para B2B en el período.
    * Cada entrada sigue CategoryEntry de api-types.ts:
-   *   { category: string; total: number }
+   *   { category: string; total_amount: number; operation_type: OperationType }
    */
   b2bData: CategoryEntry[];
 
@@ -325,17 +325,17 @@ interface B2BvsB2CViewProps {
  * como interfaz importable (solo como referencia de spec).
  *
  * Ejemplo real (verificado contra OpenAPI):
- * { "current_net": 45965.92, "previous_net": -1041.78, "delta": 47007.70, "delta_percent": 100.0 }
+ * { "current_period": 45965.92, "previous_period": -1041.78, "delta_abs": 47007.70, "delta_pct": 100.0 }
  */
 interface MetricsComparison {
   /** Neto del período actual (income - outcome) */
-  current_net: number;
+  current_period: number;
   /** Neto del período anterior (misma longitud) */
-  previous_net: number;
-  /** Diferencia: current_net - previous_net */
-  delta: number;
-  /** Variación porcentual */
-  delta_percent: number;
+  previous_period: number;
+  /** Diferencia: current_period - previous_period */
+  delta_abs: number;
+  /** Variación porcentual. null si previous_period === 0. */
+  delta_pct: number | null;
 }
 ```
 
@@ -350,7 +350,7 @@ interface TopCategoriesTableProps {
 
   /**
    * Datos de categorías. Array de CategoryEntry (api-types.ts).
-   * Cada entrada: { category: string; total: number }
+   * Cada entrada: { category: string; total_amount: number }
    * Se renderiza como top-5 (según limit usado en el fetch).
    */
   data: CategoryEntry[];
@@ -368,7 +368,7 @@ Columnas:
 | Columna | Tipo | Fuente (api-types.ts) |
 |---|---|---|
 | **Categoría** | `string` | `CategoryEntry.category` |
-| **Total** | `number` | `CategoryEntry.total`, formateado como `currency(USD)` |
+| **Total** | `number` | `CategoryEntry.total_amount`, formateado como `currency(USD)` |
 
 #### `ComparisonChart`
 
@@ -377,8 +377,8 @@ interface ComparisonChartProps {
   /**
    * Datos para ambos segmentos.
    * Se renderizan 4 barras en un BarChart de Recharts:
-   * - B2B current_net (azul), B2B previous_net (azul claro)
-   * - B2C current_net (verde), B2C previous_net (verde claro)
+   * - B2B current_period (azul), B2B previous_period (azul claro)
+   * - B2C current_period (verde), B2C previous_period (verde claro)
    *
    * Si un segmento es null, se omite ese par de barras.
    * Si ambos son null, se muestra "Sin datos para la comparativa."
@@ -486,10 +486,10 @@ const [b2bCategories, b2cCategories, comparisonB2B, comparisonB2C] = await Promi
 
 // Datos normalizados para ComparisonChart (4 barras):
 const chartData = [
-  { segment: "B2B", label: "Actual", net: comparisonB2B.current_net },
-  { segment: "B2B", label: "Anterior", net: comparisonB2B.previous_net },
-  { segment: "B2C", label: "Actual", net: comparisonB2C.current_net },
-  { segment: "B2C", label: "Anterior", net: comparisonB2C.previous_net },
+  { segment: "B2B", label: "Actual", net: comparisonB2B.current_period },
+  { segment: "B2B", label: "Anterior", net: comparisonB2B.previous_period },
+  { segment: "B2C", label: "Actual", net: comparisonB2C.current_period },
+  { segment: "B2C", label: "Anterior", net: comparisonB2C.previous_period },
 ];
 ```
 
@@ -531,10 +531,10 @@ Un **`BarChart`** de Recharts con 4 barras:
 
 | Barra | Valor | Color |
 |---|---|---|
-| B2B Actual | `comparisonB2B.current_net` | `var(--chart-1)` |
-| B2C Actual | `comparisonB2C.current_net` | `var(--chart-3)` |
-| B2B Anterior | `comparisonB2B.previous_net` | `var(--chart-2)` |
-| B2C Anterior | `comparisonB2C.previous_net` | `var(--chart-4)` |
+| B2B Actual | `comparisonB2B.current_period` | `var(--chart-1)` |
+| B2C Actual | `comparisonB2C.current_period` | `var(--chart-3)` |
+| B2B Anterior | `comparisonB2B.previous_period` | `var(--chart-2)` |
+| B2C Anterior | `comparisonB2C.previous_period` | `var(--chart-4)` |
 
 Comportamiento:
 - Si ambos segmentos son `null`: "Sin datos para la comparativa."
