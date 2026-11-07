@@ -41,9 +41,15 @@ import type {
  *  ```
  */
 export interface DateRangeFilter {
-  /** Fecha de inicio del rango (inclusive). Formato ISO "YYYY-MM-DD". */
+  /** Fecha de inicio del rango (inclusive).
+   *  Formato ISO 8601: `"YYYY-MM-DD"`.
+   *  Si se omite, no se aplica filtro por inicio.
+   *  Ejemplo: `"2026-01-01"`. */
   start_date?: string;
-  /** Fecha de fin del rango (inclusive). Formato ISO "YYYY-MM-DD". */
+  /** Fecha de fin del rango (inclusive).
+   *  Formato ISO 8601: `"YYYY-MM-DD"`.
+   *  Si se omite, no se aplica filtro por fin.
+   *  Ejemplo: `"2026-01-31"`. */
   end_date?: string;
 }
 
@@ -75,15 +81,21 @@ export interface DateRangeFilter {
  *  ```
  */
 export interface AlertsParams extends DateRangeFilter {
-  /** Umbral de incremento sobre el promedio histórico.
-   *  Una alerta se dispara cuando:
-   *    (outcome_actual - baseline) / baseline > threshold
-   *  Default: 0.3 (30%). */
+  /** Umbral de incremento sobre el promedio histórico que dispara una alerta.
+   *  El backend calcula: `(outcome_actual - baseline) / baseline > threshold`.
+   *  Valores válidos: cualquier número ≥ 0 (float).
+   *  Default del backend: `0.3` (30%).
+   *  Ejemplo: `0.5` para alertar solo cuando el outcome supere el
+   *  promedio en un 50% o más. */
   threshold?: number;
-  /** Granularidad de agrupación. "day" | "week" | "month".
-   *  Default: "month". */
+  /** Granularidad de agrupación temporal.
+   *  Valores: `"day"` (diario), `"week"` (semanal), `"month"` (mensual).
+   *  Default del backend: `"month"`.
+   *  Ejemplo: `"week"` para alertas semanales. */
   group_by?: "day" | "week" | "month";
-  /** Filtrar por tipo de negocio. "B2B" | "B2C". */
+  /** Filtrar resultados por tipo de negocio.
+   *  Valores: `"B2B"` (business-to-business), `"B2C"` (business-to-consumer).
+   *  Si se omite, se incluyen ambos tipos. */
   business_type?: BusinessType;
 }
 
@@ -116,13 +128,19 @@ export interface AlertsParams extends DateRangeFilter {
  *  ```
  */
 export interface TopCategoriesParams extends DateRangeFilter {
-  /** Tipo de operación a consultar. "income" | "outcome".
-   *  Default: "outcome". */
+  /** Tipo de operación a consultar para el ranking de categorías.
+   *  Valores: `"income"` (top ingresos), `"outcome"` (top egresos).
+   *  Default del backend: `"outcome"`.
+   *  Ejemplo: `"income"` para obtener las categorías con mayores ingresos. */
   operation_type?: OperationType;
-  /** Número máximo de categorías a retornar. 1-20.
-   *  Default: 5. */
+  /** Número máximo de categorías a retornar.
+   *  Rango válido: 1 a 20 (el backend rechaza valores fuera de rango).
+   *  Default del backend: `5`.
+   *  Ejemplo: `3` para el top 3. */
   limit?: number;
-  /** Filtrar por tipo de negocio. "B2B" | "B2C". */
+  /** Filtrar el ranking por tipo de negocio.
+   *  Valores: `"B2B"` (business-to-business), `"B2C"` (business-to-consumer).
+   *  Si se omite, se incluyen ambos tipos en el ranking. */
   business_type?: BusinessType;
 }
 

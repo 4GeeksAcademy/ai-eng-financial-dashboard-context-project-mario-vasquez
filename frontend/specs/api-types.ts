@@ -40,15 +40,22 @@ import type {
  *  }
  */
 export interface FacetsResponse {
-  /** "income" | "outcome" */
+  /** Tipos de operación disponibles para filtrar.
+   *  Valores: `"income"` (ingresos), `"outcome"` (egresos). */
   operation_types: OperationType[];
-  /** "B2B" | "B2C" */
+  /** Tipos de negocio disponibles para filtrar.
+   *  Valores: `"B2B"` (business-to-business), `"B2C"` (business-to-consumer). */
   business_types: BusinessType[];
-  /** 5 categorías de movimientos */
+  /** Categorías de movimientos disponibles para filtrar.
+   *  Valores: `"suppliers"`, `"sales"`, `"operational"`, `"administrative"`, `"others"`. */
   categories: Category[];
-  /** Fecha ISO del movimiento más antiguo */
+  /** Fecha del movimiento más antiguo en el dataset.
+   *  Formato ISO 8601: `"YYYY-MM-DD"`.
+   *  Ejemplo: `"2025-11-01"`. */
   min_date: string;
-  /** Fecha ISO del movimiento más reciente */
+  /** Fecha del movimiento más reciente en el dataset.
+   *  Formato ISO 8601: `"YYYY-MM-DD"`.
+   *  Ejemplo: `"2026-10-28"`. */
   max_date: string;
 }
 
@@ -70,14 +77,25 @@ export interface FacetsResponse {
  *  }
  */
 export interface AlertEntry {
-  /** Período donde se detectó la anomalía (ej. "2025-12") */
+  /** Período donde se detectó la anomalía.
+   *  Formato: `"YYYY-MM"` (agrupación mensual) o `"YYYY-MM-DD"` (diaria).
+   *  Ejemplo: `"2025-12"` indica diciembre de 2025. */
   period: string;
-  /** Total de egresos en el período anómalo */
+  /** Total de egresos en el período anómalo.
+   *  Unidad: la misma moneda que los montos de entrada (float).
+   *  Ejemplo: `103378.98`. */
   outcome_total: number;
-  /** Promedio de egresos de todos los períodos anteriores */
+  /** Promedio de egresos de todos los períodos anteriores al actual.
+   *  Sirve como línea base (baseline) para detectar la anomalía.
+   *  Unidad: misma moneda que `outcome_total`.
+   *  Ejemplo: `41404.44`. */
   baseline_average: number;
-  /** (outcome_total - baseline_average) / baseline_average.
-   *  > threshold (default 0.3) dispara la alerta */
+  /** Razón de incremento respecto al promedio histórico.
+   *  Fórmula: `(outcome_total - baseline_average) / baseline_average`.
+   *  Una alerta se dispara cuando `increase_ratio > threshold`
+   *  (threshold por defecto = 0.3, es decir, 30% sobre el promedio).
+   *  Valores típicos: `0.0` (sin desviación), `1.5` (150% sobre el promedio).
+   *  Ejemplo: `1.4968` significa ~150% por encima del baseline. */
   increase_ratio: number;
 }
 
@@ -102,11 +120,19 @@ export type AlertsResponse = AlertEntry[];
  *  }
  */
 export interface CategoryEntry {
-  /** Nombre de la categoría */
+  /** Nombre de la categoría.
+   *  Valores posibles: `"suppliers"`, `"sales"`, `"operational"`,
+   *  `"administrative"`, `"others"`.
+   *  Ejemplo: `"others"`. */
   category: Category;
-  /** Tipo de operación al que pertenece el total */
+  /** Tipo de operación al que pertenece el total acumulado.
+   *  Valores: `"income"` (ingreso) o `"outcome"` (egreso).
+   *  Ejemplo: `"outcome"`. */
   operation_type: OperationType;
-  /** Suma total de montos para esta categoría y tipo */
+  /** Suma total de montos para esta categoría y tipo de operación.
+   *  Unidad: misma moneda que los montos de entrada (float).
+   *  Orden: descendente (mayor total primero).
+   *  Ejemplo: `224428.44`. */
   total_amount: number;
 }
 
