@@ -3,6 +3,7 @@
 //
 // Fuente: backend/app/routes.py (modelos Pydantic)
 // Verificado contra: respuestas reales de cada endpoint (2026-11-07)
+// Verificado contra: OpenAPI /docs (esquemas y tipos propiedad por propiedad)
 //
 // Funcionalidades cubiertas:
 //   1. Facets — rango de fechas y vista B2B vs B2C

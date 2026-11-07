@@ -3,6 +3,7 @@
 //
 // Fuente: backend/app/routes.py (parámetros de cada endpoint)
 // Verificado contra: respuestas reales de cada endpoint (2026-11-07)
+// Verificado contra: OpenAPI /docs (parámetros query propiedad por propiedad)
 //
 // Funcionalidades cubiertas:
 //   1. DateRangeFilter — filtro de fechas compartido
