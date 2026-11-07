@@ -155,6 +155,45 @@ export interface CategoryEntry {
 export type TopCategoriesResponse = CategoryEntry[];
 
 // ============================================================
+// Funcionalidad 3 — Comparativa B2B vs B2C
+// ============================================================
+
+/** Respuesta de GET /api/metrics/comparison
+ *
+ *  Compara el neto (income - outcome) del período actual contra
+ *  el período anterior de igual longitud. Los endpoints de comparison
+ *  requieren start_date y end_date como query params obligatorios.
+ *
+ *  Uso previsto — gráfico de barras B2B vs B2C:
+ *  Se hacen DOS llamadas paralelas (una por business_type) y se
+ *  renderizan 4 barras en un BarChart.
+ *
+ *  Ejemplo real (2026-11-07):
+ *  {
+ *    "current_period": 45965.92,
+ *    "previous_period": -1041.78,
+ *    "delta_abs": 47007.70,
+ *    "delta_pct": 100.0
+ *  }
+ */
+export interface MetricsComparison {
+  /** Neto del período actual (income - outcome).
+   *  Ejemplo: `45965.92`. */
+  current_period: number;
+  /** Neto del período anterior (misma longitud que el actual).
+   *  Ejemplo: `-1041.78`. */
+  previous_period: number;
+  /** Diferencia absoluta: current_period - previous_period.
+   *  Ejemplo: `47007.70`. */
+  delta_abs: number;
+  /** Variación porcentual respecto al período anterior.
+   *  Fórmula: (delta_abs / |previous_period|) * 100.
+   *  null cuando previous_period === 0 (división por cero).
+   *  Ejemplo: `100.0` significa un 100% de variación. */
+  delta_pct: number | null;
+}
+
+// ============================================================
 // Endpoints adicionales (referencia cruzada)
 // ============================================================
 

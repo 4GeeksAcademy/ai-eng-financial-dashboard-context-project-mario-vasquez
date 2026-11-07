@@ -202,7 +202,7 @@ interface ComparisonParams extends DateRangeFilter {
 #### Respuesta (comparación)
 
 ```ts
-// Schema backend: MetricsComparison
+// frontend/specs/api-types.ts — MetricsComparison
 interface MetricsComparison {
   current_period: number;       // Neto del período actual (income - outcome), ej. 45965.92
   previous_period: number;      // Neto del período anterior de igual duración, ej. -1041.78
@@ -255,7 +255,7 @@ interface B2BvsB2CViewProps {
 | Archivo | Propósito |
 |---|---|
 | `README.md` | **Este archivo** — índice con las tres funcionalidades, endpoints, tipos, valores válidos y casos límite |
-| `api-types.ts` | Interfaces TypeScript para respuestas de la API (`FacetsResponse`, `AlertEntry`, `AlertsResponse`, `CategoryEntry`) — sin `any`, sin `object`, todas con JSDoc |
+| `api-types.ts` | Interfaces TypeScript para respuestas de la API (`FacetsResponse`, `AlertEntry`, `AlertsResponse`, `CategoryEntry`, `MetricsComparison`) — sin `any`, sin `object`, todas con JSDoc |
 | `param-types.ts` | Tipos de parámetros query (`DateRangeFilter`, `AlertsParams`, `TopCategoriesParams`) — verificados propiedad por propiedad contra OpenAPI |
 | `api-spec.md` | Endpoints REST del backend verificados contra `/docs` y OpenAPI real — los 9 endpoints, parámetros, ejemplos reales |
 | `schemas-spec.md` | Schemas compartidos (modelos Pydantic ↔ tipos TypeScript) |

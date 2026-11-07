@@ -86,19 +86,17 @@ interface DateRangeFilterProps {
 
 ### Fetch asociado
 
+El padre (`App.tsx`) orquesta el fetch:
+
+- **Endpoint**: `GET /api/metrics/facets`
+- **Parámetros**: ninguno
+- **Tipo de respuesta**: `FacetsResponse` (`frontend/specs/api-types.ts`)
+- **Extraer**: `min_date` y `max_date` para los atributos `min`/`max` de los inputs
+- **Cache**: no es necesario refetch, facets se obtiene una vez al montar App.tsx
+
 ```tsx
-import type { FacetsResponse } from "../specs/api-types";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
-
-async function fetchDateRange(): Promise<FacetsResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/metrics/facets`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch date range: ${response.status}`);
-  }
-  return response.json();
-  // Uso: extraer min_date y max_date
-}
+// Contrato fetch — implementado en App.tsx, NO en DateRangeFilter
+type FacetsPromise = Promise<FacetsResponse>;
 ```
 
 ---
@@ -188,26 +186,16 @@ interface AlertsTableProps {
 
 ### Fetch asociado
 
+El padre (`App.tsx`) orquesta el fetch:
+
+- **Endpoint**: `GET /api/metrics/alerts`
+- **Parámetros**: `AlertsParams` (`frontend/specs/param-types.ts`) — `threshold`, `group_by`, `start_date`, `end_date`, `business_type`
+- **Tipo de respuesta**: `AlertEntry[]` (`frontend/specs/api-types.ts`)
+- **Frecuencia**: refetch cada vez que cambia `threshold`, `group_by` o el rango de fechas global
+
 ```tsx
-import type { AlertsParams } from "../specs/param-types";
-import type { AlertsResponse, AlertEntry } from "../specs/api-types";
-
-async function fetchAlerts(params: AlertsParams): Promise<AlertEntry[]> {
-  const searchParams = new URLSearchParams();
-  if (params.start_date) searchParams.set("start_date", params.start_date);
-  if (params.end_date) searchParams.set("end_date", params.end_date);
-  if (params.threshold !== undefined) searchParams.set("threshold", String(params.threshold));
-  if (params.group_by) searchParams.set("group_by", params.group_by);
-
-  const response = await fetch(
-    `${API_BASE_URL}/api/metrics/alerts?${searchParams.toString()}`,
-  );
-  if (!response.ok) {
-    throw new Error(`Failed to fetch alerts: ${response.status}`);
-  }
-  const json: AlertsResponse = await response.json();
-  return json.alerts;
-}
+// Contrato fetch — implementado en App.tsx
+type AlertsFetch = (params: AlertsParams) => Promise<AlertEntry[]>;
 ```
 
 ### Comportamiento
@@ -280,7 +268,7 @@ Comparar el rendimiento financiero de los segmentos de negocio B2B y B2C lado a 
 ### Props
 
 ```tsx
-import type { CategoryEntry } from "../specs/api-types";
+import type { CategoryEntry, MetricsComparison } from "../specs/api-types";
 
 interface B2BvsB2CViewProps {
   /**
@@ -297,12 +285,11 @@ interface B2BvsB2CViewProps {
    */
   b2cData: CategoryEntry[];
 
-  /**
-   * Datos de comparación para ambos segmentos.
-   * Cada segmento requiere su propia llamada a GET /api/metrics/comparison
-   * con business_type="B2B" y business_type="B2C" respectivamente.
-   * null cuando aún no se ha completado la carga o hay error.
-   * Ver estructura MetricsComparison abajo.
+  /** Datos de comparación para ambos segmentos.
+   *  Cada segmento requiere su propia llamada a GET /api/metrics/comparison
+   *  con business_type="B2B" y business_type="B2C" respectivamente.
+   *  null cuando aún no se ha completado la carga o hay error.
+   *  Ver MetricsComparison en api-types.ts.
    */
   comparisonData: {
     b2b: MetricsComparison | null;
@@ -319,24 +306,9 @@ interface B2BvsB2CViewProps {
   error?: string | null;
 }
 
-/**
- * Respuesta de GET /api/metrics/comparison.
- * No está en api-types.ts porque no se requiere en el frontend actual
- * como interfaz importable (solo como referencia de spec).
- *
- * Ejemplo real (verificado contra OpenAPI):
- * { "current_period": 45965.92, "previous_period": -1041.78, "delta_abs": 47007.70, "delta_pct": 100.0 }
- */
-interface MetricsComparison {
-  /** Neto del período actual (income - outcome) */
-  current_period: number;
-  /** Neto del período anterior (misma longitud) */
-  previous_period: number;
-  /** Diferencia: current_period - previous_period */
-  delta_abs: number;
-  /** Variación porcentual. null si previous_period === 0. */
-  delta_pct: number | null;
-}
+> `MetricsComparison` se define en `frontend/specs/api-types.ts` — interfaz completa con JSDoc en cada propiedad. No se replica aquí.
+> 
+> Campos: `current_period: number`, `previous_period: number`, `delta_abs: number`, `delta_pct: number | null`.
 ```
 
 ### Sub-componentes
@@ -429,68 +401,25 @@ interface ComparisonChartProps {
 
 ### Fetch asociado
 
+El padre (`App.tsx`) orquesta **4 llamadas paralelas**:
+
+| # | Endpoint | Parámetros | Tipo respuesta |
+|---|---|---|---|
+| 1 | `GET /api/metrics/categories/top` | `business_type=B2B`, `operation_type=outcome`, `limit=5`, fechas | `CategoryEntry[]` |
+| 2 | `GET /api/metrics/categories/top` | `business_type=B2C`, `operation_type=outcome`, `limit=5`, fechas | `CategoryEntry[]` |
+| 3 | `GET /api/metrics/comparison` | `business_type=B2B`, `start_date`, `end_date` | `MetricsComparison` |
+| 4 | `GET /api/metrics/comparison` | `business_type=B2C`, `start_date`, `end_date` | `MetricsComparison` |
+
 ```tsx
-import type { DateRangeFilter } from "../specs/param-types";
-import type { TopCategoriesParams } from "../specs/param-types";
-import type { BusinessType } from "../src/lib/financial-types";
+// Contrato fetch — implementado en App.tsx
+type TopCategoriesFetch = (params: TopCategoriesParams & { business_type: BusinessType }) => Promise<CategoryEntry[]>;
+type ComparisonFetch = (params: DateRangeFilter & { business_type: BusinessType }) => Promise<MetricsComparison>;
 
-// ─── 1. Fetch de top categorías (una por business_type) ───
+// Uso en App.tsx: 4 llamadas paralelas, resultados mapeados a props de B2BvsB2CView
+// Props resultantes: { b2bData, b2cData, comparisonData: { b2b, b2c } }
+```
 
-async function fetchTopCategories(
-  params: TopCategoriesParams & { business_type: BusinessType },
-): Promise<CategoryEntry[]> {
-  const searchParams = new URLSearchParams();
-  if (params.operation_type) searchParams.set("operation_type", params.operation_type);
-  if (params.limit !== undefined) searchParams.set("limit", String(params.limit));
-  if (params.start_date) searchParams.set("start_date", params.start_date);
-  if (params.end_date) searchParams.set("end_date", params.end_date);
-  if (params.business_type) searchParams.set("business_type", params.business_type);
-
-  const response = await fetch(
-    `${API_BASE_URL}/api/metrics/categories/top?${searchParams.toString()}`,
-  );
-  if (!response.ok) {
-    throw new Error(`Failed to fetch top categories: ${response.status}`);
-  }
-  return response.json();
-}
-
-// ─── 2. Fetch de comparativa (una por business_type) ───
-
-async function fetchComparison(
-  params: DateRangeFilter & { business_type: BusinessType },
-): Promise<MetricsComparison> {
-  const searchParams = new URLSearchParams();
-  if (params.start_date) searchParams.set("start_date", params.start_date);
-  if (params.end_date) searchParams.set("end_date", params.end_date);
-  searchParams.set("business_type", params.business_type);
-
-  const response = await fetch(
-    `${API_BASE_URL}/api/metrics/comparison?${searchParams.toString()}`,
-  );
-  if (!response.ok) {
-    throw new Error(`Failed to fetch comparison: ${response.status}`);
-  }
-  return response.json();
-}
-
-// ─── Uso en App.tsx (padre) ───
-
-// 4 llamadas paralelas (2 a categories/top + 2 a metrics/comparison)
-const [b2bCategories, b2cCategories, comparisonB2B, comparisonB2C] = await Promise.all([
-  fetchTopCategories({ start_date, end_date, business_type: "B2B" }),
-  fetchTopCategories({ start_date, end_date, business_type: "B2C" }),
-  fetchComparison({ start_date, end_date, business_type: "B2B" }),
-  fetchComparison({ start_date, end_date, business_type: "B2C" }),
-]);
-
-// Datos normalizados para ComparisonChart (4 barras):
-const chartData = [
-  { segment: "B2B", label: "Actual", net: comparisonB2B.current_period },
-  { segment: "B2B", label: "Anterior", net: comparisonB2B.previous_period },
-  { segment: "B2C", label: "Actual", net: comparisonB2C.current_period },
-  { segment: "B2C", label: "Anterior", net: comparisonB2C.previous_period },
-];
+**Nota**: `start_date` y `end_date` son **requeridos** por `GET /api/metrics/comparison` (el backend rechaza la petición sin ellos). El padre debe garantizar que ambas fechas estén definidas antes de llamar a `fetchComparison`.
 ```
 
 ### Comportamiento
@@ -565,16 +494,15 @@ Comportamiento:
 
 ### Fetch pattern común a todos
 
-Todos los nuevos componentes siguen el mismo patrón del frontend existente:
+Todos los componentes nuevos dependen del mismo contrato fetch, gobernado por `App.tsx`:
 
-```tsx
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
-// fetch nativo + async/await + .ok check + .json()
-// Sin librerías HTTP externas (axios, ky, TanStack Query, etc.)
-// Error handling con throw + catch + setError en el padre
-// Loading controlado con useState en el padre
-// Solo se pasan searchParams si el valor está definido (no cadenas vacías)
-```
+- `VITE_API_BASE_URL` como base URL (variable de entorno, default `""`)
+- Fetch nativo (`fetch` + `async/await` + `.ok` check + `.json()`)
+- Sin librerías HTTP externas (axios, ky, TanStack Query, etc.)
+- Error handling mediante `catch` + `setError` en el padre
+- Loading controlado con `useState` en el padre
+- Solo se pasan searchParams si el valor está definido (no cadenas vacías)
+- Los componentes son puramente presentacionales — no gestionan su propio fetching
 
 ### Árbol de componentes resultante (con los nuevos)
 
