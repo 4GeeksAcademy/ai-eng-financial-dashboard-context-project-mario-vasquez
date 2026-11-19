@@ -43,6 +43,29 @@ El proyecto es un **dashboard financiero** con frontend **React 19 + TypeScript 
 | Debug remoto (debugpy) | — | 5678 |
 | Documentación API | http://localhost:8000/docs | — |
 
+## Rastro de verificación: desajustes PM wording vs API fields (2026-11-07)
+
+Contraste sistemático entre las afirmaciones de `memory-bank/product-overview.md` y los campos reales de la API (verificados contra `backend/app/routes.py` + llamadas curl a cada endpoint).
+
+| # | Afirmación del PM | Campo real / Realidad | Desajuste | Resuelto en spec |
+|---|---|---|---|---|
+| 1 | "Filtros por fecha, categoría, tipo de operación, **tipo de negocio**" en `GET /api/metrics` | `GET /api/metrics` NO acepta `business_type`. Solo `start_date`, `end_date`, `category`, `operation_type`. | ⚠️ El filtro `business_type` no existe en el endpoint principal. Sí existe en summary, categories/top, comparison, alerts. | `api-spec.md` § "Desajuste con el PM: Filtro business_type ausente" |
+| 2 | "Profit Margin %" (PM) vs "profit/profitPercent" (frontend) vs "net" (backend) | Backend `MetricsSummaryItem.net` = frontend `KPIMetrics.profit`. El PM llama "Profit Margin %" al mismo concepto. | ⚠️ `net` (backend) ≠ `profit` (frontend) para el mismo cálculo `income - outcome`. | `schemas-spec.md` § "Desajuste de terminología: Frontend Profit vs Backend Net" |
+| 3 | Diagrama de arquitectura: solo `Navegador → GET /api/metrics → FastAPI` | 9 endpoints reales (solo 1 representado en el diagrama) | ⚠️ El diagrama es correcto para el flujo actual del frontend pero omite 8 endpoints que el backend expone. | `components-spec.md` § "Desajuste con el PM: Diagrama de arquitectura subestima la API" |
+| 4 | "360 movimientos (12 meses × 30 días)" | Rango real de montos: 514.38 - 11984.17. Montos siempre positivos (no hay negativos). | ✅ Sin desajuste. El PM no especifica rangos. | N/A |
+| 5 | "2 gráficos: Income vs Outcome y Profit Margin %" | El backend llama `net` a `income - outcome`; el frontend llama `profitPercent` a `(profit/income)*100`. | ⚠️ `monthlyData.profitPercent` (frontend) no tiene campo equivalente directo en `MetricsSummaryItem` (backend). | `schemas-spec.md` § "Desajuste de terminología" |
+| 6 | `computeMonthlyData()` replica agregación del backend | `GET /api/metrics/summary?group_by=month` devuelve lo mismo que `computeMonthlyData()` en frontend. | ⚠️ Duplicación de lógica: servidor y cliente computan lo mismo por separado. | `utils-spec.md` § "Desajuste PM vs realidad: computeMonthlyData vs GET /api/metrics/summary" |
+
+### Detalle de la verificación
+
+**Verificado contra backend corriendo** (2026-11-07):
+- Endpoint `GET /api/metrics?business_type=B2B` → 360 items sin filtrar (confirma bug: parámetro no declarado)
+- Endpoint `GET /api/metrics/summary` → campo `net` en todos los items
+- Endpoint `GET /api/metrics/comparison` → campos `current_period`, `previous_period`, `delta_abs`, `delta_pct`
+- Todos los endpoints responden con datos reales
+
+**Decisión**: Todos los desajustes se resolvieron exclusivamente en los archivos de spec (`frontend/specs/`). No se modificó ni el PM ni la implementación.
+
 ### Cómo ejecutar
 
 ```bash
